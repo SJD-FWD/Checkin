@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SITC Trainer Check-in</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #f0f4f9;
+    font-family: "Google Sans", Roboto, Arial, sans-serif;
+    color: #202124;
+    padding: 24px 16px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .wrap { width: 100%; max-width: 560px; }
+
+  /* ── Preview controls (hidden when deployed) ── */
+  #demo-bar {
+    background: #fff8e1;
+    border: 1.5px solid #f3d27a;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #5c4a00;
+  }
+  .demo-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .demo-sub   { font-size: 12px; line-height: 1.5; margin-bottom: 12px; }
+  .demo-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .demo-grid label {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase;
+  }
+  .demo-grid select {
+    font: inherit; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none;
+    padding: 7px 8px; border: 1px solid #e3c35f; border-radius: 6px; background: #fff; color: #202124;
+  }
+  .demo-grid .demo-check {
+    grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none;
+  }
+  @media (max-width: 440px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  /* ── Card ── */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 16px rgba(0,0,0,.06);
+    overflow: hidden;
+  }
+  .card-header { background: #1a73e8; padding: 26px 28px 22px; }
+  .card-header h1 { font-size: 21px; font-weight: 500; color: #fff; margin-bottom: 6px; }
+  .card-header p  { font-size: 14px; color: rgba(255,255,255,.88); line-height: 1.5; }
+  .card-body { padding: 26px 28px 28px; }
+  @media (max-width: 480px) {
+    .card-header { padding: 22px 20px 18px; }
+    .card-body   { padding: 22px 18px 24px; }
+  }
+
+  /* ── Steps ── */
+  .step {
+    border: 1.5px solid #dadce0;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+    transition: opacity .25s;
+  }
+  .step.locked { opacity: .42; pointer-events: none; }
+  .step-label {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase;
+    color: #5f6368; margin-bottom: 12px;
+  }
+  .step-done { color: #137333; font-size: 12px; letter-spacing: 0; text-transform: none; display: none; }
+  .step.complete .step-done { display: inline; }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; border: none; border-radius: 6px; padding: 11px 18px;
+    background: #1a73e8; color: #fff; font: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-primary:hover:not(:disabled) { background: #1765cc; }
+  .btn-primary:disabled { background: #dadce0; color: #80868b; cursor: default; }
+  .btn-secondary {
+    border: 1.5px solid #dadce0; background: #fff; color: #1a73e8; border-radius: 6px;
+    padding: 9px 14px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%;
+    margin-top: 10px;
+  }
+  .pin-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* ── Status ── */
+  .status {
+    margin-top: 12px; font-size: 13px; padding: 9px 12px; border-radius: 6px; line-height: 1.5; display: none;
+  }
+  .status.info    { display: block; background: #e8f0fe; color: #1558d6; }
+  .status.success { display: block; background: #e6f4ea; color: #137333; }
+  .status.warning { display: block; background: #fef7e0; color: #8a5a00; }
+  .status.error   { display: block; background: #fce8e6; color: #c5221f; }
+
+  #venue-card {
+    display: none; margin-top: 12px; padding: 12px 14px; border-radius: 8px;
+    background: #f8fff9; border: 1.5px solid #34a853;
+  }
+  #venue-card .v-name { font-weight: 500; font-size: 15px; }
+  #venue-card .v-meta { font-size: 12px; color: #5f6368; margin-top: 3px; }
+
+  /* Permission help */
+  #permission-help { display: none; margin-top: 10px; border: 1.5px solid #f5c6c6; border-radius: 8px; }
+  #permission-help summary {
+    padding: 10px 12px; font-size: 13px; font-weight: 500; color: #c5221f; cursor: pointer; list-style: none;
+  }
+  #permission-help summary::-webkit-details-marker { display: none; }
+  .help-body { padding: 0 12px 12px; font-size: 12.5px; color: #5f6368; line-height: 1.6; }
+  .help-body h4 { font-size: 12px; font-weight: 600; color: #3c4043; margin: 10px 0 3px; }
+  .help-body ol { margin-left: 18px; }
+
+  /* ── Sessions ── */
+  .session-opt {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    border: 1.5px solid #dadce0; border-radius: 8px; background: #fff; padding: 12px 14px;
+    margin-bottom: 8px; font: inherit; color: inherit; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .session-opt:last-child { margin-bottom: 0; }
+  .session-opt:hover:not(:disabled) { border-color: #1a73e8; }
+  .session-opt.selected { border-color: #1a73e8; background: #f3f8ff; }
+  .session-opt:disabled { cursor: default; background: #f8f9fa; opacity: .7; }
+  .radio { width: 18px; height: 18px; border: 2px solid #80868b; border-radius: 50%; flex-shrink: 0; position: relative; }
+  .session-opt.selected .radio { border-color: #1a73e8; }
+  .session-opt.selected .radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #1a73e8; }
+  .s-main { flex: 1; min-width: 0; }
+  .s-time { font-size: 14px; font-weight: 500; }
+  .s-meta { font-size: 12px; color: #5f6368; margin-top: 2px; }
+  .s-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .tag.open   { background: #e6f4ea; color: #137333; }
+  .tag.early  { background: #f1f3f4; color: #5f6368; }
+  .tag.closed { background: #fce8e6; color: #c5221f; }
+  .tag.done   { background: #e8f0fe; color: #1558d6; }
+  .empty-note { font-size: 13px; color: #5f6368; line-height: 1.55; }
+
+  /* ── Fields ── */
+  .field label { display: block; font-size: 13px; font-weight: 500; color: #3c4043; margin-bottom: 6px; }
+  .field select, .field input[type="text"] {
+    width: 100%; border: 1.5px solid #dadce0; border-radius: 6px; padding: 10px 12px;
+    font: inherit; font-size: 14px; color: #202124; background: #fff; outline: none;
+  }
+  .field select:focus, .field input[type="text"]:focus { border-color: #1a73e8; }
+  .hint { font-size: 11.5px; color: #80868b; margin-top: 5px; line-height: 1.45; }
+
+  /* ── Photo ── */
+  .req-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; letter-spacing: 0; text-transform: none; }
+  .req-badge.required { background: #fce8e6; color: #c5221f; }
+  .req-badge.optional { background: #f1f3f4; color: #5f6368; }
+  #monday-note {
+    display: none; background: #fef7e0; border: 1.5px solid #fde293; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: #8a6500; line-height: 1.5;
+  }
+  .photo-body { font-size: 13px; color: #3c4043; line-height: 1.6; margin-bottom: 12px; }
+  .photo-body ul { margin: 4px 0 0 18px; }
+  .upload-zone {
+    position: relative; border: 2px dashed #dadce0; border-radius: 10px; padding: 24px 16px;
+    text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+  }
+  .upload-zone:hover { border-color: #1a73e8; background: #f8fbff; }
+  .upload-zone.has-file { border: 2px solid #34a853; background: #f8fff9; }
+  #file-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-icon { font-size: 28px; margin-bottom: 6px; }
+  .upload-label { font-size: 14px; font-weight: 500; color: #1a73e8; }
+  .upload-sub { font-size: 12px; color: #80868b; margin-top: 3px; }
+  #photo-preview-wrap { display: none; margin-top: 12px; }
+  #photo-preview { width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; border: 1px solid #dadce0; display: block; }
+  .preview-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 7px; font-size: 12px; color: #5f6368; }
+  #btn-remove-photo { background: none; border: none; color: #c5221f; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+
+  /* ── Submit ── */
+  #btn-submit {
+    width: 100%; border: none; border-radius: 6px; padding: 13px; margin-top: 4px;
+    background: #34a853; color: #fff; font: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+    transition: background .15s, opacity .15s;
+  }
+  #btn-submit:hover:not(:disabled) { background: #2d8f47; }
+  #btn-submit:disabled { opacity: .45; cursor: default; }
+  #submit-hint { font-size: 12px; color: #80868b; text-align: center; margin-top: 8px; min-height: 16px; }
+
+  /* ── Success ── */
+  #success { display: none; padding: 36px 28px 30px; text-align: center; }
+  .checkmark {
+    width: 64px; height: 64px; border-radius: 50%; background: #e6f4ea; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center; font-size: 30px;
+  }
+  #success h2 { font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+  .summary { text-align: left; border: 1px solid #e8eaed; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .summary div { display: flex; gap: 12px; padding: 9px 12px; font-size: 13px; border-bottom: 1px solid #f1f3f4; }
+  .summary div:last-child { border-bottom: none; }
+  .summary dt { width: 84px; flex-shrink: 0; color: #5f6368; }
+  .summary dd { flex: 1; font-weight: 500; overflow-wrap: anywhere; }
+  #rac-callout { text-align: left; font-size: 13px; line-height: 1.55; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
+  #rac-callout.ok   { background: #e6f4ea; color: #137333; }
+  #rac-callout.miss { background: #fce8e6; color: #c5221f; }
+  #rac-callout .rac-title { font-weight: 600; margin-bottom: 2px; }
+  .btn-rac {
+    display: block; text-align: center; text-decoration: none; margin-top: 10px;
+    background: #1a73e8; color: #fff !important; border-radius: 6px; padding: 12px;
+    font-size: 15px; font-weight: 500;
+  }
+  .btn-rac:hover { background: #1765cc; }
+  .close-note { font-size: 13px; color: #5f6368; }
+
+  /* ── Behind the scenes (preview only) ── */
+  #behind { display: none; }
+  #behind .card-body { padding: 20px 22px 22px; }
+  #behind h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  #behind .b-sub { font-size: 12.5px; color: #5f6368; line-height: 1.5; margin-bottom: 14px; }
+  .b-section { margin-top: 14px; }
+  .b-section:first-of-type { margin-top: 0; }
+  .b-section h3 { font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: #5f6368; margin-bottom: 6px; }
+  .b-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .b-table td { padding: 6px 8px; border-bottom: 1px solid #f1f3f4; vertical-align: top; }
+  .b-table td:first-child { color: #5f6368; width: 42%; }
+  .b-val { font-family: "Roboto Mono", Menlo, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+  .b-why { color: #80868b; font-size: 11.5px; margin-top: 2px; }
+  .b-table tr.new td:first-child::after { content: " NEW"; font-size: 9.5px; font-weight: 700; color: #1a73e8; }
+  .b-table tr.muted td, .b-table tr.muted .b-val { color: #9aa0a6; }
+  .b-note { font-size: 12px; color: #5f6368; line-height: 1.5; background: #f8f9fa; border-radius: 6px; padding: 8px 10px; }
+  .tg {
+    white-space: pre-line; font-size: 12.5px; line-height: 1.5; background: #eef3f8;
+    border-radius: 10px; padding: 10px 12px; border-left: 3px solid #1a73e8;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────────── PREVIEW CONTROLS (removed automatically when deployed) ─────────────── -->
+<div class="wrap" id="demo-bar">
+  <div class="demo-title">Preview mode — nothing is saved or sent</div>
+  <div class="demo-sub" id="demo-sub">Pick a situation, then use the form below as a trainer would. Studio positions and sessions are sample data.</div>
+  <div class="demo-grid">
+    <label>Trainer's situation
+      <select id="demo-scenario" onchange="resetForm()">
+        <option value="cq">At JR Fitness (Clarke Quay)</option>
+        <option value="chinatown">Between the two Milan studios</option>
+        <option value="weak">At a studio, weak GPS (basement)</option>
+        <option value="noSession">At Far East Plaza, no session today</option>
+        <option value="far">At home, ~1.7 km away</option>
+        <option value="blocked">Location permission blocked</option>
+      </select>
+    </label>
+    <label>Time now
+      <select id="demo-time" onchange="resetForm()">
+        <option value="510">8.30am</option>
+        <option value="560" selected>9.20am</option>
+        <option value="1110">6.30pm</option>
+      </select>
+    </label>
+    <label class="demo-check">
+      <input type="checkbox" id="demo-monday" onchange="resetForm()"> Pretend today is Monday (photo becomes required)
+    </label>
+  </div>
+</div>
+
+<!-- ─────────────── THE FORM ─────────────── -->
+<div class="wrap card">
+  <div class="card-header">
+    <h1>SITC Trainer Check-in</h1>
+    <p>Confirm you're at the studio, pick your session, and add the FAK + AED photo.</p>
+  </div>
+
+  <div class="card-body" id="form-body">
+
+    <!-- Step 1 -->
+    <div class="step" id="step-location">
+      <div class="step-label">Step 1 — Check your location <span class="step-done">✓ Done</span></div>
+      <button class="btn-primary" id="btn-detect" onclick="detectLocation()">
+        <svg class="pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span id="btn-detect-text">Check my location</span>
+      </button>
+      <div class="status" id="loc-status"></div>
+      <button class="btn-secondary" id="btn-weak-continue" style="display:none" onclick="continueWeakGps()">Continue anyway — flag for PL/PC review</button>
+
+      <div id="venue-card">
+        <div class="v-name" id="venue-name"></div>
+        <div class="v-meta" id="venue-meta"></div>
+      </div>
+
+      <details id="permission-help">
+        <summary>📍 Location blocked? Tap for help</summary>
+        <div class="help-body">
+          <h4>📱 iPhone (Safari)</h4>
+          <ol>
+            <li>Settings → Privacy &amp; Security → Location Services → ON</li>
+            <li>Settings → Safari → Location → "Ask" or "Allow"</li>
+            <li>Come back here and tap "Try again"</li>
+          </ol>
+          <h4>🤖 Android (Chrome)</h4>
+          <ol>
+            <li>Tap the 🔒 icon next to the address bar</li>
+            <li>Permissions → Location → Allow</li>
+            <li>Reload this page and tap "Try again"</li>
+          </ol>
+          <h4>⚠️ Opened from Telegram or WhatsApp?</h4>
+          <p>In-app browsers often block location. Tap ••• and choose "Open in Chrome" or "Open in Safari".</p>
+        </div>
+      </details>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step locked" id="step-session">
+      <div class="step-label">Step 2 — Pick your session <span class="step-done">✓ Done</span></div>
+      <div id="session-list"><div class="empty-note">Your sessions at this studio will appear here.</div></div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step locked" id="step-trainer">
+      <div class="step-label">Step 3 — Your name <span class="step-done">✓ Done</span></div>
+      <div class="field">
+        <label for="trainer-name">Your full name</label>
+        <input type="text" id="trainer-name" maxlength="60" autocomplete="name" autocapitalize="words"
+               placeholder="e.g. Tan Wei Ming" oninput="onTrainerChange()">
+        <div class="hint">Type it exactly as on your RAC. This phone will remember it for next time.</div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step locked" id="step-photo">
+      <div class="step-label">Step 4 — FAK + AED photo <span class="req-badge optional" id="photo-badge">Optional today</span></div>
+      <div id="monday-note"><strong>📅 Monday check</strong> — the FAK + AED photo is required today.</div>
+      <div class="photo-body">
+        Take ONE photo showing:
+        <ul>
+          <li>First Aid Kit (FAK)</li>
+          <li>AED with its blinking light visible</li>
+          <li>Both items in the same shot</li>
+        </ul>
+      </div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept="image/*,.heic,.heif" onchange="onPhotoSelected(event)">
+        <div id="upload-placeholder">
+          <div class="upload-icon">📷</div>
+          <div class="upload-label">Tap to take or choose a photo</div>
+          <div class="upload-sub">Large photos are shrunk automatically before upload</div>
+        </div>
+      </div>
+      <div id="photo-preview-wrap">
+        <img id="photo-preview" alt="FAK and AED photo preview">
+        <div class="preview-meta">
+          <span id="photo-meta"></span>
+          <button id="btn-remove-photo" onclick="removePhoto()">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="btn-submit" disabled onclick="submitCheckin()">Submit check-in</button>
+    <div id="submit-hint">Start with Step 1.</div>
+  </div>
+
+  <!-- Success -->
+  <div id="success">
+    <div class="checkmark">✅</div>
+    <h2>Check-in recorded</h2>
+    <dl class="summary" id="summary"></dl>
+    <div id="rac-callout"></div>
+    <p class="close-note" id="close-note">You can close this page.</p>
+    <button class="btn-secondary" id="btn-again" style="display:none" onclick="resetForm()">Start again (preview)</button>
+  </div>
+</div>
+
+<!-- ─────────────── BEHIND THE SCENES (preview only) ─────────────── -->
+<div class="wrap card" id="behind">
+  <div class="card-body">
+    <h2>Behind the scenes</h2>
+    <p class="b-sub">Trainers never see this panel. It shows what the live version would read and write. Phase 1: the form only adds a row to a new <b>Check-in Log</b> tab. The Session Log, Location Log and Telegram are not touched.</p>
+    <div id="behind-content"><div class="b-note">Check a location above to see the distance check.</div></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ⬇️  PASTE YOUR APPS SCRIPT WEB APP LINK HERE (ends in /exec)
+//     Deploy → Manage deployments → Web app URL
+// ============================================================
+var API_URL = "PASTE_YOUR_EXEC_LINK_HERE";
+
+// ⬇️  RAC FORM LINK — shown to the trainer after they submit, if their
+//     RAC isn't in yet. Replace with the direct FormSG link if you prefer.
+var RAC_FORM_URL = "https://linktr.ee/sitc.sjd";
+
+// ============================================================
+// SETTINGS — the rules the live version will enforce
+// ============================================================
+var CONFIG = {
+  maxAccuracyM:    100,   // GPS readings less precise than this ask the trainer to re-check
+  weakTriesBeforeOverride: 2, // after this many weak readings, allow "continue + flag for review"
+  windowBeforeMin: 60,    // check-in opens this many minutes before start (display only — server decides)
+  windowAfterMin:  5,     // ...and closes this many minutes after start
+  racCutoffMin:    15,    // RAC is due this many minutes before start (T-15)
+  photoMaxPx:      1600,  // longest side of the uploaded photo
+  photoQuality:    0.8
+};
+
+// Live when API_URL is filled in. Add ?preview to the page link to
+// show the clickable preview instead (nothing is saved or sent).
+var API_READY = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(API_URL.trim());
+var FORCE_PREVIEW = /[?&]preview\b/.test(location.search);
+var IS_LIVE = API_READY && !FORCE_PREVIEW;
+
+// ============================================================
+// SAMPLE DATA — preview only. Coordinates are approximate
+// placeholders, NOT for the real Venues tab.
+// ============================================================
+var DEMO_VENUES = [
+  { name: "JR Fitness (Clarke Quay)",            lat: 1.28850, lon: 103.84360, radiusM: 250 },
+  { name: "JR Fitness (City Hall)",              lat: 1.29300, lon: 103.85200, radiusM: 250 },
+  { name: "Milan Pole Dance (Teck Lim Studio)",  lat: 1.27970, lon: 103.84200, radiusM: 250 },
+  { name: "Milan Pole Dance (Keong Saik Studio)",lat: 1.28040, lon: 103.84120, radiusM: 250 },
+  { name: "Jumping Fitness @ Far East Plaza",    lat: 1.30720, lon: 103.83350, radiusM: 250 },
+  { name: "Fitstop Upper Thomson",               lat: 1.35400, lon: 103.83300, radiusM: 250 }
+];
+var DEMO_SESSIONS = [
+  { venue: "JR Fitness (Clarke Quay)",             start: "9.30am",  end: "10.30am", cls: "Zumba",        rac: true,  loc: false, row: 212 },
+  { venue: "JR Fitness (Clarke Quay)",             start: "7.00pm",  end: "8.00pm",  cls: "HIIT",         rac: false, loc: false, row: 219 },
+  { venue: "Milan Pole Dance (Teck Lim Studio)",   start: "9.00am",  end: "10.00am", cls: "Pole Fitness", rac: false, loc: true,  row: 210 },
+  { venue: "Milan Pole Dance (Teck Lim Studio)",   start: "10.30am", end: "11.30am", cls: "Pole Flow",    rac: false, loc: false, row: 215 },
+  { venue: "Milan Pole Dance (Keong Saik Studio)", start: "9.30am",  end: "10.30am", cls: "Pole Fitness", rac: true,  loc: false, row: 213 },
+  { venue: "Fitstop Upper Thomson",                start: "8.00am",  end: "9.00am",  cls: "Strength",     rac: true,  loc: true,  row: 208 }
+];
+var DEMO_SCENARIOS = {
+  cq:        { lat: 1.28875, lon: 103.84385, acc: 18 },
+  chinatown: { lat: 1.28005, lon: 103.84165, acc: 25 },
+  weak:      { lat: 1.28860, lon: 103.84370, acc: 240 },
+  noSession: { lat: 1.30725, lon: 103.83340, acc: 20 },
+  far:       { lat: 1.35000, lon: 103.84800, acc: 15 },
+  blocked:   { blocked: true }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+var state;
+function freshState() {
+  return {
+    lat: null, lon: null, acc: null,
+    weakTries: 0, allowWeak: false, reviewFlag: "",
+    options: null,          // what the server returned for this location
+    sessionId: null,
+    trainer: "",
+    photo: null,            // { blob, name, originalSize }
+    photoRequired: false
+  };
+}
+state = freshState();
+
+// ============================================================
+// SMALL HELPERS
+// ============================================================
+function $(id) { return document.getElementById(id); }
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+
+function setStatus(msg, type) {
+  var s = $("loc-status");
+  s.className = "status " + (type || "");
+  s.textContent = msg || "";
+}
+
+function lockStep(id, locked) { $(id).classList.toggle("locked", locked); }
+function markComplete(id, done) { $(id).classList.toggle("complete", !!done); }
+
+function fmtDistance(m) { return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m"; }
+
+function fmtBytes(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " KB"; }
+
+// "9.30am" → minutes after midnight (same format as the Session Log)
+function parseSessMin(str) {
+  var s = String(str).toLowerCase().replace(/\s/g, "");
+  var pm = s.indexOf("pm") !== -1, am = s.indexOf("am") !== -1;
+  s = s.replace("pm", "").replace("am", "");
+  var p = s.split("."), h = parseInt(p[0], 10), m = p[1] ? parseInt(p[1], 10) : 0;
+  if (isNaN(h)) return null;
+  if (pm && h !== 12) h += 12;
+  if (am && h === 12) h = 0;
+  return h * 60 + (isNaN(m) ? 0 : m);
+}
+
+// minutes → "9.15am"
+function minLabel(total) {
+  var h = Math.floor(total / 60), m = total % 60, suf = h >= 12 ? "pm" : "am";
+  var h12 = h % 12 === 0 ? 12 : h % 12;
+  return h12 + "." + (m < 10 ? "0" : "") + m + suf;
+}
+
+function windowFor(startMin, nowMin) {
+  var opens = startMin - CONFIG.windowBeforeMin, closes = startMin + CONFIG.windowAfterMin;
+  if (nowMin < opens)  return { state: "early",  label: "Opens " + minLabel(opens) };
+  if (nowMin > closes) return { state: "closed", label: "Closed at " + minLabel(closes) };
+  var diff = startMin - nowMin;
+  var label = diff > 0 ? "Starts in " + diff + " min" : (diff === 0 ? "Starting now" : "Started " + (-diff) + " min ago");
+  return { state: "open", label: label };
+}
+
+function haversineM(lat1, lon1, lat2, lon2) {
+  var R = 6371000, toRad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * toRad, dLon = (lon2 - lon1) * toRad;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+// Timestamp in the exact format the Telegram batching expects
+function sgtStamp(nowMin) {
+  var d = new Date();
+  var h = nowMin !== undefined ? Math.floor(nowMin / 60) : d.getHours();
+  var m = nowMin !== undefined ? nowMin % 60 : d.getMinutes();
+  return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() + " " +
+         pad(h) + ":" + pad(m) + ":" + pad(d.getSeconds());
+}
+function todayStr() {
+  var d = new Date();
+  return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear();
+}
+
+// ============================================================
+// BACKEND — live calls go to Apps Script; preview uses sample data
+// ============================================================
+// Sends one request to the Apps Script back end and returns its JSON.
+// "text/plain" keeps it a simple request, which Apps Script accepts from
+// another website. No Google sign-in is sent, so the number of Google
+// accounts on the phone doesn't matter.
+function callApi(body, timeoutMs, ok, fail) {
+  var done = false;
+  var timer = setTimeout(function () {
+    if (done) return;
+    done = true;
+    fail({ message: "No reply from the server. Check your mobile data, then try again." });
+  }, timeoutMs);
+
+  fetch(API_URL.trim(), {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(body)
+  })
+    .then(function (r) {
+      if (!r.ok) throw new Error("Server error (" + r.status + ")");
+      return r.json();
+    })
+    .then(function (data) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      ok(data);
+    })
+    .catch(function (e) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      fail({ message: "Couldn't reach the server. Check your connection and try again." +
+                      (e && e.message ? " (" + e.message + ")" : "") });
+    });
+}
+
+var liveApi = {
+  // Server returns: { nearest, inRange[], sessions[], photoRequired } or { error }
+  getOptions: function (lat, lon, acc, allowWeak, ok, fail) {
+    callApi({ action: "options", lat: lat, lon: lon, accuracyM: acc, allowWeak: allowWeak }, 30000,
+      function (res) { if (res && res.error) fail({ message: res.error }); else ok(res); }, fail);
+  },
+  uploadPhoto: function (fileData, sessionId, ok, fail) {
+    callApi({ action: "upload", fileData: fileData, sessionId: sessionId }, 90000, ok, fail);
+  },
+  submit: function (payload, ok, fail) {
+    callApi({ action: "submit", payload: payload }, 30000, ok, fail);
+  }
+};
+
+var demoApi = {
+  getOptions: function (lat, lon, acc, allowWeak, ok) {
+    var nowMin = demoNowMin();
+    var extra = allowWeak ? Math.min(acc, 300) : 0;   // same rule as the server
+    var dists = DEMO_VENUES.map(function (v) {
+      return { venue: v.name, distanceM: Math.round(haversineM(lat, lon, v.lat, v.lon)), radiusM: v.radiusM + extra };
+    }).sort(function (a, b) { return a.distanceM - b.distanceM; });
+
+    var inRange = dists.filter(function (d) { return d.distanceM <= d.radiusM; });
+    var inRangeNames = inRange.map(function (d) { return d.venue; });
+
+    var sessions = DEMO_SESSIONS.filter(function (s) {
+      return inRangeNames.indexOf(s.venue) !== -1;
+    }).map(function (s) {
+      var startMin = parseSessMin(s.start);
+      var w = windowFor(startMin, nowMin);
+      return {
+        id: todayStr() + "|" + s.venue + "|" + s.start,
+        venue: s.venue, start: s.start, end: s.end, cls: s.cls,
+        startMin: startMin, window: w.state, windowLabel: w.label,
+        locDone: s.loc, racReceived: s.rac, row: s.row
+      };
+    });
+
+    setTimeout(function () {
+      ok({
+        nearest: dists[0],
+        allDistances: dists,
+        inRange: inRange,
+        sessions: sessions,
+        photoRequired: $("demo-monday").checked
+      });
+    }, 500);
+  },
+  uploadPhoto: function (fileData, sessionId, ok) {
+    setTimeout(function () { ok({ url: "https://drive.google.com/file/d/SAMPLE/view", name: fileData.name }); }, 600);
+  },
+  submit: function (payload, ok) {
+    var s = findSession(payload.sessionId);
+    setTimeout(function () { ok({ success: true, racReceived: s ? s.racReceived : false, nowMin: demoNowMin() }); }, 500);
+  }
+};
+
+var api = IS_LIVE ? liveApi : demoApi;
+
+function demoNowMin() { return parseInt($("demo-time").value, 10); }
+
+function findSession(id) {
+  if (!state.options) return null;
+  for (var i = 0; i < state.options.sessions.length; i++) {
+    if (state.options.sessions[i].id === id) return state.options.sessions[i];
+  }
+  return null;
+}
+
+// ============================================================
+// STEP 1 — LOCATION
+// ============================================================
+function detectLocation() {
+  var btn = $("btn-detect");
+  btn.disabled = true;
+  $("btn-detect-text").textContent = "Checking…";
+  $("permission-help").style.display = "none";
+  $("btn-weak-continue").style.display = "none";
+  setStatus("Getting your location — allow the browser prompt if it appears.", "info");
+
+  if (!IS_LIVE) {
+    var sc = DEMO_SCENARIOS[$("demo-scenario").value];
+    setTimeout(function () {
+      if (sc.blocked) onGeoError({ code: 1 });
+      else onPosition(sc.lat, sc.lon, sc.acc);
+    }, 700);
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    onGeoError({ code: 0 });
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function (pos) { onPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy); },
+    onGeoError,
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function onGeoError(err) {
+  resetDetectButton("Try again");
+  var msgs = {
+    0: "This browser can't share location. Open the link in Chrome or Safari.",
+    1: "Location permission is blocked. Allow location for this page, then tap Try again.",
+    2: "Couldn't get a GPS fix. Move near a window or outside, then tap Try again.",
+    3: "Location took too long. Tap Try again."
+  };
+  setStatus(msgs[err.code] || "Location error. Tap Try again.", "error");
+  if (err.code === 1) $("permission-help").style.display = "block";
+}
+
+function resetDetectButton(text) {
+  $("btn-detect").disabled = false;
+  $("btn-detect-text").textContent = text;
+}
+
+function onPosition(lat, lon, acc) {
+  state.lat = lat; state.lon = lon; state.acc = Math.round(acc);
+
+  if (state.acc > CONFIG.maxAccuracyM) {
+    state.weakTries++;
+    resetDetectButton("Check again");
+    setStatus("GPS signal is weak (accurate to ±" + state.acc + " m only). Step near a window or entrance, wait a few seconds, then tap Check again.", "warning");
+    if (state.weakTries >= CONFIG.weakTriesBeforeOverride) {
+      $("btn-weak-continue").style.display = "block";
+    }
+    renderBehindDistancesPending();
+    return;
+  }
+  state.allowWeak = false;
+  state.reviewFlag = "";
+  loadOptions();
+}
+
+function continueWeakGps() {
+  state.allowWeak = true;
+  state.reviewFlag = "Weak GPS (±" + state.acc + " m) — trainer continued";
+  $("btn-weak-continue").style.display = "none";
+  loadOptions();
+}
+
+function loadOptions() {
+  setStatus("Finding your studio and today's sessions…", "info");
+  api.getOptions(state.lat, state.lon, state.acc, state.allowWeak, onOptions, function (e) {
+    resetDetectButton("Try again");
+    setStatus(e && e.message ? e.message : "Couldn't reach the server. Try again.", "error");
+  });
+}
+
+function onOptions(opts) {
+  state.options = opts;
+  resetDetectButton("Check again");
+  renderBehindDistances();
+
+  if (!opts.inRange || opts.inRange.length === 0) {
+    $("venue-card").style.display = "none";
+    lockAfterLocation(true);
+    var n = opts.nearest;
+    if (!n) { setStatus("Couldn't match your location to a studio. Tap Check again.", "error"); return; }
+    setStatus("You're " + fmtDistance(n.distanceM) + " from the nearest SITC studio (" + n.venue +
+              "). Check-in only works at the studio — tap Check again when you arrive.", "error");
+    return;
+  }
+
+  var names = opts.inRange.map(function (v) { return v.venue; });
+  $("venue-name").textContent = "📍 " + names.join("  ·  ");
+  $("venue-meta").textContent = opts.inRange.map(function (v) {
+    return fmtDistance(v.distanceM) + " away";
+  }).join("  ·  ") + "  —  GPS ±" + state.acc + " m" + (state.reviewFlag ? "  (flagged for review)" : "");
+  $("venue-card").style.display = "block";
+  setStatus(names.length > 1
+    ? "You're near " + names.length + " SITC studios — pick your session below."
+    : "Location confirmed.", "success");
+
+  markComplete("step-location", true);
+  renderSessions(opts.sessions, names.length > 1);
+  restoreTrainerName();
+  setPhotoRequired(opts.photoRequired);
+  lockAfterLocation(false);
+  updateSubmit();
+}
+
+function lockAfterLocation(locked) {
+  ["step-session", "step-trainer", "step-photo"].forEach(function (id) { lockStep(id, locked); });
+  if (locked) markComplete("step-location", false);
+  updateSubmit();
+}
+
+// ============================================================
+// STEP 2 — SESSIONS
+// ============================================================
+function renderSessions(sessions, showVenue) {
+  var list = $("session-list");
+  list.innerHTML = "";
+  state.sessionId = null;
+  markComplete("step-session", false);
+
+  if (!sessions.length) {
+    list.appendChild(el("div", "empty-note",
+      "No SITC sessions are scheduled at this studio today. If you are running one, message your PL/PC so they can add it to the Session Log."));
+    return;
+  }
+
+  var order = { open: 0, early: 1, closed: 2 };
+  sessions.sort(function (a, b) {
+    return order[a.window] - order[b.window] || a.startMin - b.startMin;
+  });
+
+  sessions.forEach(function (s) {
+    var b = el("button", "session-opt");
+    b.type = "button";
+    b.disabled = s.window !== "open";
+    b.setAttribute("data-id", s.id);
+
+    b.appendChild(el("span", "radio"));
+    var main = el("span", "s-main");
+    main.appendChild(el("div", "s-time", s.start + " – " + s.end + "  ·  " + s.cls));
+    if (showVenue) main.appendChild(el("div", "s-meta", s.venue));
+    b.appendChild(main);
+
+    var tags = el("span", "s-tags");
+    tags.appendChild(el("span", "tag " + s.window, s.windowLabel));
+    if (s.locDone) tags.appendChild(el("span", "tag done", "Already checked in"));
+    b.appendChild(tags);
+
+    b.onclick = function () { selectSession(s.id); };
+    list.appendChild(b);
+  });
+
+  var open = sessions.filter(function (s) { return s.window === "open"; });
+  if (open.length === 1) selectSession(open[0].id);
+  if (open.length === 0) {
+    list.appendChild(el("div", "hint",
+      "Check-in opens " + CONFIG.windowBeforeMin + " min before a session and closes " + CONFIG.windowAfterMin + " min after it starts."));
+  }
+}
+
+function selectSession(id) {
+  state.sessionId = id;
+  var opts = document.querySelectorAll(".session-opt");
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].classList.toggle("selected", opts[i].getAttribute("data-id") === id);
+  }
+  markComplete("step-session", true);
+  updateSubmit();
+}
+
+// ============================================================
+// STEP 3 — TRAINER
+// ============================================================
+// The name is remembered on this phone (live version only) so trainers
+// don't retype it each time. Stored in the browser, never on the sheet.
+var NAME_KEY = "sitc_trainer_name";
+
+function restoreTrainerName() {
+  var box = $("trainer-name");
+  if (IS_LIVE && !box.value) {
+    try { box.value = localStorage.getItem(NAME_KEY) || ""; } catch (e) {}
+  }
+  onTrainerChange();
+}
+
+function cleanName(v) { return String(v || "").replace(/\s+/g, " ").trim(); }
+
+function onTrainerChange() {
+  var name = cleanName($("trainer-name").value);
+  state.trainer = name.length >= 2 ? name : "";
+  markComplete("step-trainer", !!state.trainer);
+  updateSubmit();
+}
+
+// A random ID kept on this phone, recorded with each check-in so PL/PCs can
+// later spot one phone submitting for several trainers. Live version only.
+function deviceId() {
+  if (!IS_LIVE) return "preview-device";
+  try {
+    var id = localStorage.getItem("sitc_device_id");
+    if (!id) {
+      id = "d-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      localStorage.setItem("sitc_device_id", id);
+    }
+    return id;
+  } catch (e) { return "unavailable"; }
+}
+
+// ============================================================
+// STEP 4 — PHOTO
+// ============================================================
+function setPhotoRequired(required) {
+  state.photoRequired = !!required;
+  var badge = $("photo-badge");
+  badge.className = "req-badge " + (required ? "required" : "optional");
+  badge.textContent = required ? "Required today" : "Optional today";
+  $("monday-note").style.display = required ? "block" : "none";
+}
+
+function onPhotoSelected(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  $("photo-meta").textContent = "Preparing photo…";
+  $("photo-preview-wrap").style.display = "block";
+  shrinkPhoto(file, function (result) {
+    state.photo = result;
+    var img = $("photo-preview");
+    if (result.previewable) {
+      img.src = URL.createObjectURL(result.blob);
+      img.style.display = "block";
+    } else {
+      img.style.display = "none";
+    }
+    $("photo-meta").textContent = result.shrunk
+      ? result.name + " — " + fmtBytes(result.originalSize) + " → " + fmtBytes(result.blob.size)
+      : result.name + " — " + fmtBytes(result.blob.size) + (result.previewable ? "" : " (preview not available on this phone)");
+    $("upload-zone").classList.add("has-file");
+    $("upload-placeholder").style.display = "none";
+    updateSubmit();
+  });
+}
+
+// Resize large photos in the browser so uploads are fast on mobile data.
+// Formats the browser can't decode (e.g. HEIC outside Safari) are sent as-is.
+function shrinkPhoto(file, cb) {
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function () {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var scale = Math.min(1, CONFIG.photoMaxPx / Math.max(w, h));
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(function (blob) {
+      if (blob && blob.size < file.size) {
+        cb({ blob: blob, name: file.name.replace(/\.[^.]+$/, "") + ".jpg", originalSize: file.size, shrunk: true, previewable: true });
+      } else {
+        cb({ blob: file, name: file.name, originalSize: file.size, shrunk: false, previewable: true });
+      }
+    }, "image/jpeg", CONFIG.photoQuality);
+  };
+  img.onerror = function () {
+    URL.revokeObjectURL(url);
+    cb({ blob: file, name: file.name, originalSize: file.size, shrunk: false, previewable: false });
+  };
+  img.src = url;
+}
+
+function removePhoto() {
+  state.photo = null;
+  $("file-input").value = "";
+  $("photo-preview-wrap").style.display = "none";
+  $("upload-zone").classList.remove("has-file");
+  $("upload-placeholder").style.display = "block";
+  updateSubmit();
+}
+
+// ============================================================
+// SUBMIT
+// ============================================================
+function missingItems() {
+  var m = [];
+  if (!state.options || !state.options.inRange || !state.options.inRange.length) return ["a confirmed location"];
+  if (!state.sessionId) m.push("a session");
+  if (!state.trainer) m.push("your name");
+  if (state.photoRequired && !state.photo) m.push("the FAK + AED photo");
+  return m;
+}
+
+function updateSubmit() {
+  var m = missingItems();
+  $("btn-submit").disabled = m.length > 0;
+  $("submit-hint").textContent = m.length ? "Still needed: " + m.join(", ") + "." : "Ready to submit.";
+  markComplete("step-photo", !!state.photo);
+}
+
+function submitCheckin() {
+  if (missingItems().length) return;
+  var btn = $("btn-submit");
+  btn.disabled = true;
+
+  var payload = {
+    sessionId: state.sessionId,
+    trainer:   state.trainer,
+    lat:       state.lat,
+    lon:       state.lon,
+    accuracyM: state.acc,
+    allowWeak: state.allowWeak,
+    deviceId:  deviceId(),
+    clientTime: new Date().toISOString(),
+    photoUrl:  "",
+    photoName: ""
+  };
+
+  function send() {
+    btn.textContent = "Submitting…";
+    api.submit(payload, function (res) {
+      if (res && res.error) { failSubmit(res.error); return; }
+      showSuccess(payload, res || {});
+    }, function (e) { failSubmit(e && e.message ? e.message : String(e)); });
+  }
+
+  if (state.photo) {
+    btn.textContent = "Uploading photo…";
+    blobToBase64(state.photo.blob, function (b64) {
+      api.uploadPhoto(
+        { name: state.photo.name, mimeType: state.photo.blob.type || "image/jpeg", base64: b64 },
+        state.sessionId,
+        function (up) {
+          if (up && up.url) { payload.photoUrl = up.url; payload.photoName = state.photo.name; send(); }
+          else failSubmit("Photo upload failed" + (up && up.error ? ": " + up.error : "") + ". Tap Submit to try again.");
+        },
+        function (e) { failSubmit("Photo upload failed: " + (e && e.message ? e.message : e)); }
+      );
+    });
+  } else {
+    send();
+  }
+}
+
+function failSubmit(msg) {
+  var btn = $("btn-submit");
+  btn.textContent = "Submit check-in";
+  btn.disabled = false;
+  $("submit-hint").textContent = msg;
+}
+
+function blobToBase64(blob, cb) {
+  var r = new FileReader();
+  r.onload = function (e) { cb(e.target.result.split(",")[1]); };
+  r.readAsDataURL(blob);
+}
+
+function showSuccess(payload, res) {
+  var s = findSession(payload.sessionId);
+  if (IS_LIVE) { try { localStorage.setItem(NAME_KEY, payload.trainer); } catch (e) {} }
+  $("form-body").style.display = "none";
+  $("success").style.display = "block";
+
+  var summary = $("summary");
+  summary.innerHTML = "";
+  [
+    ["Studio",  s ? s.venue : ""],
+    ["Session", s ? s.start + " – " + s.end + " · " + s.cls : ""],
+    ["Trainer", payload.trainer],
+    ["Photo",   payload.photoUrl ? "FAK + AED photo sent ✅" : "No photo"]
+  ].forEach(function (r) {
+    var row = el("div");
+    row.appendChild(el("dt", null, r[0]));
+    row.appendChild(el("dd", null, r[1]));
+    summary.appendChild(row);
+  });
+
+  // RAC link appears only here, after the check-in is saved,
+  // and only when the RAC for this session isn't in yet.
+  var rac = $("rac-callout");
+  rac.innerHTML = "";
+  if (res.racReceived) {
+    rac.className = "ok";
+    rac.textContent = "RAC: ✅ already received for this session. You're all set.";
+  } else {
+    rac.className = "miss";
+    rac.appendChild(el("div", "rac-title", "Next step: submit your RAC"));
+    var nowMin = typeof res.nowMin === "number" ? res.nowMin : (IS_LIVE ? null : demoNowMin());
+    var due = s ? s.startMin - CONFIG.racCutoffMin : null;
+    var msg = "Your RAC for this session hasn't been received yet.";
+    if (due !== null && nowMin !== null) {
+      msg += nowMin < due
+        ? " It's due by " + minLabel(due) + " (" + (due - nowMin) + " min from now)."
+        : " The " + minLabel(due) + " cutoff has passed — submit it now and inform your PL/PC.";
+    }
+    rac.appendChild(el("div", null, msg));
+    var a = el("a", "btn-rac", "Open RAC form →");
+    a.href = RAC_FORM_URL;
+    a.target = "_blank";
+    a.rel = "noopener";
+    rac.appendChild(a);
+  }
+
+  if (!IS_LIVE) {
+    $("close-note").style.display = "none";
+    $("btn-again").style.display = "block";
+    renderBehindWrites(payload, s, res);
+  }
+}
+
+// ============================================================
+// BEHIND-THE-SCENES PANEL (preview only)
+// ============================================================
+function tableFrom(rows) {
+  var t = el("table", "b-table");
+  rows.forEach(function (r) {
+    var tr = el("tr", r[3] || "");
+    tr.appendChild(el("td", null, r[0]));
+    var cell = el("td");
+    cell.appendChild(el("div", "b-val", r[1]));
+    if (r[2]) cell.appendChild(el("div", "b-why", r[2]));
+    tr.appendChild(cell);
+    t.appendChild(tr);
+  });
+  return t;
+}
+
+function section(title, child) {
+  var s = el("div", "b-section");
+  s.appendChild(el("h3", null, title));
+  s.appendChild(child);
+  return s;
+}
+
+function renderBehindDistancesPending() {
+  var box = $("behind-content");
+  box.innerHTML = "";
+  box.appendChild(el("div", "b-note",
+    "Reading rejected: GPS ±" + state.acc + " m is worse than the " + CONFIG.maxAccuracyM +
+    " m limit. Weak readings so far: " + state.weakTries + ". After " + CONFIG.weakTriesBeforeOverride +
+    ", the trainer can continue and the check-in is flagged in the Check-in Log for PL/PC review."));
+}
+
+function renderBehindDistances() {
+  var o = state.options, box = $("behind-content");
+  box.innerHTML = "";
+  var rows = (o.allDistances || o.inRange).map(function (d) {
+    var inR = d.distanceM <= d.radiusM;
+    return [d.venue, fmtDistance(d.distanceM), inR ? "✅ within " + d.radiusM + " m" : "outside " + d.radiusM + " m", inR ? "" : "muted"];
+  });
+  box.appendChild(section("Distance check (replaces Valid Zips)", tableFrom(rows)));
+  box.appendChild(el("div", "b-note",
+    "No address lookup and no postal codes. The phone's GPS is compared with each studio's pin in a Venues tab. " +
+    "Adding a new studio = one row: name, latitude, longitude, radius."));
+}
+
+function renderBehindWrites(payload, s, res) {
+  var box = $("behind-content");
+  var stamp = sgtStamp(demoNowMin());
+  var minsFromStart = demoNowMin() - s.startMin;
+  var flags = [];
+  if (payload.allowWeak) flags.push("Weak GPS (±" + payload.accuracyM + " m)");
+  if (s.locDone) flags.push("Repeat check-in for this session");
+  box.innerHTML = "";
+
+  box.appendChild(section("Check-in Log (new tab) — one new row", tableFrom([
+    ["A · Submitted At (SGT)", stamp],
+    ["B · Session Date",       todayStr()],
+    ["C · Venue",              s.venue, "Exactly as written in the Session Log"],
+    ["D · Start",              s.start],
+    ["E · End",                s.end],
+    ["F · Class",              s.cls],
+    ["G · Session ID",         s.id, "Date | Venue | Start — used in Phase 2 to find the row"],
+    ["H · Trainer Name",       payload.trainer, "As typed"],
+    ["I · Latitude",           payload.lat.toFixed(5)],
+    ["J · Longitude",          payload.lon.toFixed(5)],
+    ["K · GPS Accuracy (m)",   String(payload.accuracyM)],
+    ["L · Distance to Venue (m)", String(distanceTo(s.venue))],
+    ["M · Mins From Start",    String(minsFromStart), "Negative = before the start time"],
+    ["N · FAK + AED Photo",    payload.photoUrl ? "View Photo" : "Not provided"],
+    ["O · Photo Filename",     payload.photoName || ""],
+    ["P · Review Flag",        flags.join("; ") || "—", flags.length ? "PL/PC to check" : ""],
+    ["Q · Device ID",          payload.deviceId, "Random ID kept on the trainer's phone"],
+    ["R · Session Log Row (ref)", String(s.row), "For reference only — nothing is written there"],
+    ["S · Session Log Sync",   "YES — row " + s.row, "Blank while the Session Log switch is off"]
+  ])));
+
+  var stampNow = stamp;
+  box.appendChild(section("Session Log — row " + s.row + " (only when WRITE_TO_SESSION_LOG = true)", tableFrom([
+    ["L · LOCATION STATUS",        s.locDone ? "(already SUBMITTED — left as is)" : "SUBMITTED ✅"],
+    ["M · LOCATION RECEIVED TIME", s.locDone ? "(left as is)" : stampNow],
+    ["P · FAK/AED EVIDENCE",       payload.photoUrl ? "SENT ✅" : "(not touched)", "", payload.photoUrl ? "" : "muted"],
+    ["Q · EVIDENCE LINK",          payload.photoUrl ? "View Photo" : "(not touched)", "", payload.photoUrl ? "" : "muted"],
+    ["Y · RAC/LOC Last Update",    stampNow, "Starts Telegram's 90-second wait"],
+    ["Row colour",                 s.racReceived ? "Green (RAC + location)" : "Red (RAC missing)"]
+  ])));
+  box.appendChild(el("div", "b-note",
+    "Same cells the old location form writes, so the Telegram bot works unchanged. " +
+    "Never touched: H, I, O (RAC sync) and N (Telegram). Location Log and Valid Zips are no longer used."));
+}
+
+function distanceTo(venue) {
+  var list = (state.options && (state.options.allDistances || state.options.inRange)) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].venue === venue) return list[i].distanceM;
+  return "";
+}
+
+// ============================================================
+// RESET (preview controls, and "Start again")
+// ============================================================
+function resetForm() {
+  state = freshState();
+  $("form-body").style.display = "block";
+  $("success").style.display = "none";
+  $("venue-card").style.display = "none";
+  $("permission-help").style.display = "none";
+  $("btn-weak-continue").style.display = "none";
+  setStatus("", "");
+  resetDetectButton("Check my location");
+  $("session-list").innerHTML = '<div class="empty-note">Your sessions at this studio will appear here.</div>';
+  $("trainer-name").value = "";
+  removePhoto();
+  setPhotoRequired(false);
+  ["step-location", "step-session", "step-trainer", "step-photo"].forEach(function (id) { markComplete(id, false); });
+  lockAfterLocation(true);
+  $("btn-submit").textContent = "Submit check-in";
+  $("submit-hint").textContent = "Start with Step 1.";
+  $("behind-content").innerHTML = '<div class="b-note">Check a location above to see the distance check.</div>';
+}
+
+// ============================================================
+// START
+// ============================================================
+(function init() {
+  if (IS_LIVE) {
+    $("demo-bar").style.display = "none";
+  } else {
+    if (!API_READY && !FORCE_PREVIEW) {
+      $("demo-sub").textContent = "The Apps Script link (API_URL) isn't filled in yet, so this page is showing the preview. " +
+        "Studio positions and sessions are sample data.";
+    }
+    $("demo-monday").checked = new Date().getDay() === 1;
+    $("behind").style.display = "block";
+  }
+  resetForm();
+})();
+</script>
+</body>
+</html>
